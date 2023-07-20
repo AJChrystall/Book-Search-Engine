@@ -1,24 +1,32 @@
-// server/auth.js
 const { AuthenticationError } = require('apollo-server-express');
+const jwt = require('jsonwebtoken');
 
-const authenticate = (req, res, next) => {
-  // Your authentication logic here
-  // Assuming you attach the user object to req.user
-  const user = getUserFromAuthToken(req.headers.authorization);
+const getUserFromAuthToken = (token) => {
+  try {
+    if (!token) return null;
 
-  // If user is not authenticated
-  if (!user) {
-    // Check if it's a GraphQL request
-    if (req.body.operationName) {
-      // Throw AuthenticationError for GraphQL requests
-      throw new AuthenticationError('User not authenticated for GraphQL.');
-    } else {
-      // Redirect or respond with an error for non-GraphQL requests
-      return res.status(401).json({ error: 'User not authenticated.' });
-    }
+    // Replace 'YOUR_SECRET_KEY' with your actual secret key used to sign the token
+    const decodedToken = jwt.verify(token, 'YOUR_SECRET_KEY');
+    return decodedToken.user;
+  } catch (error) {
+    // Token verification failed or token is invalid
+    return null;
   }
+};
 
-  req.user = user;
+const authMiddleware = (req, res, next) => {
+  // Extract the JWT token from the request headers
+  const token = req.headers.authorization || '';
+
+  // Get the user information from the token using the helper function
+  const user = getUserFromAuthToken(token);
+
+  // Attach the user object to the context object to pass to resolvers
+  req.context = { user };
+
+  // Continue with the next middleware or resolver
   next();
 };
+
+module.exports = authMiddleware;
 
